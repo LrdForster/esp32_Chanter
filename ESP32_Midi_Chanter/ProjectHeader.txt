@@ -1,0 +1,119 @@
+/******************************************************************************
+ * Project: ESP32-S3 WiFi / Bluetooth / USB MIDI Chanter
+ * MCU:     ESP32-S3 FH4R2
+ *
+ * Overview:
+ * ---------
+ * Electronic MIDI/audio chanter using capacitive touch sensing and
+ * internal ESP32-S3 DACs. Designed for low-latency live performance.
+ * Uses a dual-core architecture to separate control logic from
+ * real-time audio playback.
+ *
+ * Audio Model:
+ * ------------
+ * - Internal DACs only (8-bit)
+ * - DAC1 (GPIO17): Continuous drone audio (DMA looped)
+ * - DAC2 (GPIO18): Chanter note samples (~100 ms)
+ * - Samples are pitch-shifted per note
+ * - Mono audio mixed to both L/R headphone channels
+ * - RC low-pass filter before 3.5 mm jack
+ * - Audio always active when awake
+ *
+ * Core Assignment:
+ * ----------------
+ * Core 0 (System / Control):
+ *  - Capacitive touch scanning (GPIO 2–9)
+ *  - Finger pattern detection
+ *  - Momentary button handling (GPIO 1)
+ *  - Touch calibration routines
+ *  - Volume control (10 fixed steps, no mute)
+ *  - Instrument selection
+ *  - Drone playback control
+ *  - RGB LED feedback (GPIO 48)
+ *  - Auto-off / deep sleep
+ *  - Communications (USB MIDI, OTA, future BLE/Wi-Fi/ESP-NOW)
+ *
+ * Core 1 (Real-Time Audio):
+ *  - Chanter note playback only
+ *  - Monitors shared Note variable
+ *  - Plays new note when Note changes
+ *  - No UI, calibration, or communications code
+ *  - Audio timing has highest priority
+ *
+ * GPIO Assignment:
+ * ----------------
+ * GPIO 1  : Momentary switch, 220k pull-up to 3.3V
+ *           - <300 ms press: Wake / Sleep
+ *           - Hold: Enable finger-pattern commands
+ *
+ * GPIO 2–9: Capacitive touch pads (1–8)
+ * GPIO 17 : DAC1 – Drone audio output
+ * GPIO 18 : DAC2 – Chanter audio output
+ * GPIO 48 : RGB LED / User status LED
+ *
+ * Finger-Pattern Commands (Button Held):
+ * --------------------------------------
+ * 1. Enter calibration mode
+ * 2. Volume up
+ * 3. Volume down
+ * 4. Next instrument
+ * 5. Previous instrument
+ *
+ * - Volume / instrument changes step every ~1500 ms
+ * - No silent or mute volume level
+ *
+ * Touch Calibration (RGB LED Feedback):
+ * ------------------------------------
+ * RED   : Touch all sensors (wait ~2.5 s)
+ * WHITE : Touched calibration in progress
+ * BLUE  : Release all sensors (wait ~2.5 s)
+ * WHITE : Untouched calibration in progress
+ * GREEN : Calibration complete, save to NVS
+ *
+ * Non-Volatile Storage (NVS):
+ * ---------------------------
+ * Stored values:
+ *  - Touch calibration data
+ *  - Volume level (1–10)
+ *  - Selected instrument
+ *
+ * Write policy:
+ *  - Write only when values change
+ *  - No continuous writes
+ *  - Calibration written once at completion
+ *
+ * Boot Flow:
+ * ----------
+ * On power-up or wake:
+ *  - If GPIO 10 held: Enter OTA programming mode
+ *  - Else: Enter Play Chanter mode
+ *
+ * OTA Mode:
+ * ---------
+ * - Enable Wi-Fi
+ * - Run OTA service loop
+ * - Reboot after successful update
+ *
+ * Instrument Model:
+ * -----------------
+ * Instrument 1:
+ *  - Chanter only
+ *
+ * Instrument 2+:
+ *  - Chanter + drones
+ *
+ * Future Features (Disabled by Default):
+ * -------------------------------------
+ * - Bluetooth MIDI (BLE)
+ * - Wi-Fi MIDI
+ * - ESP-NOW low-latency control
+ *
+ * Design Intent:
+ * --------------
+ * - Low latency
+ * - Real-time safe audio
+ * - Minimal UI (single button + touch)
+ * - Reliable live performance
+ * - Expandable communications
+ *
+ *****************************************************************************/

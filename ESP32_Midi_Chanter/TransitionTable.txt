@@ -1,0 +1,52 @@
+/******************************************************************************
+ * ESP32-S3 MIDI Chanter - State Machine Transition Table
+ *
+ * States:
+ * -------
+ * BOOT            : Initial power-on state
+ * OTA_MODE        : Over-the-air programming
+ * PLAY_MODE       : Normal chanter operation
+ * CALIBRATION     : Touch pad calibration
+ * SLEEP           : Deep sleep / auto-off
+ *
+ * Inputs / Events:
+ * ----------------
+ * BUTTON_SHORT    : Short press (<300 ms)
+ * BUTTON_HOLD     : Button held
+ * FINGER_PATTERN  : Specific pattern while holding button
+ * OTA_COMPLETE    : OTA update finished
+ * AUTO_OFF        : Inactivity timeout
+ *
+ * Notes:
+ * ------
+ * - Shared variable `Note` updated in PLAY_MODE
+ * - Core 0 handles UI, touch, drones
+ * - Core 1 handles real-time note playback
+ *****************************************************************************/
+
+ // STATE TRANSITION TABLE
+ // Current State   | Event / Input      | Next State       | Actions
+ // ----------------|------------------|-----------------|---------------------------------------
+ BOOT            | BUTTON_HOLD        | OTA_MODE         | Initialize Wi-Fi, start OTA service
+ BOOT            | BUTTON_SHORT       | PLAY_MODE        | Initialize variables, load NVS, setup cores
+ OTA_MODE        | OTA_COMPLETE       | BOOT             | Reboot system
+ PLAY_MODE       | BUTTON_SHORT       | SLEEP            | Enter deep sleep, stop audio temporarily
+ PLAY_MODE       | BUTTON_HOLD + FINGER_PATTERN_CALIB | CALIBRATION | Start calibration routine
+ PLAY_MODE       | AUTO_OFF           | SLEEP            | Enter deep sleep
+ CALIBRATION     | CALIB_DONE         | PLAY_MODE        | Save calibration to NVS, indicate green LED
+ SLEEP           | BUTTON_SHORT       | PLAY_MODE        | Wake system, reload last state
+ SLEEP           | BUTTON_HOLD        | OTA_MODE         | Wake and enter OTA programming
+ CALIBRATION     | BUTTON_SHORT       | PLAY_MODE        | Abort calibration, revert to last settings
+
+/******************************************************************************
+ * Notes:
+ * ------
+ * - PLAY_MODE internally handles:
+ *     - Touch sensing and finger pattern detection
+ *     - Volume control and instrument selection
+ *     - Drone playback (DAC1)
+ *     - Chanter note playback (DAC2)
+ * - Transitions are always triggered by explicit events
+ * - OTA_MODE is exclusive; no audio or touch sensing runs
+ * - SLEEP is full deep sleep; only BUTTON_SHORT or BUTTON_HOLD can wake
+ *****************************************************************************/

@@ -1,0 +1,301 @@
+ESP32-S3 WiFi, Bluetooth & USB MIDI Chanter Project
+
+Reference & Operational Specification
+
+OVERVIEW ***************************************
+
+This project is an electronic MIDI chanter using a dual-core ESP32-S3 (FH4R2).
+The instrument uses capacitive touch sensing, internal DAC audio, and USB MIDI, with provision for future wireless MIDI and control options.
+
+The ESP32-S3 provides sufficient flash and RAM to store short instrument note samples (~100 ms).
+Samples are reused and pitch-shifted for different notes.
+MP3 format is preferred over WAV to reduce memory usage.
+
+SYSTEM ARCHITECTURE
+Dual-Core Design
+
+Core 0
+System control and user interaction
+(touch sensing, calibration, button handling, drones, communications)
+
+Core 1
+Real-time chanter note playback
+(audio timing critical)
+
+The two cores communicate via shared variables or queues.
+
+FEATURES ***************************************
+
+Capacitive touch pads (chanter holes)
+
+Internal DAC audio output (2 channels)
+
+DAC1 → drone audio
+
+DAC2 → chanter notes
+
+Momentary switch with multi-function control
+
+USB MIDI
+
+Mono audio output to both headphone channels
+
+RC-filtered analog audio to 3.5 mm jack
+(audio always active)
+
+Over-The-Air (OTA) firmware updates
+
+Auto power-off (deep sleep)
+
+Touch pad calibration
+
+Volume control (10 fixed steps, no mute)
+
+Instrument selection
+
+Instrument 1: Chanter only
+
+Instrument 2+: Chanter + drones
+
+Per-instrument sample selection
+
+Future Features
+
+Bluetooth MIDI (BLE)
+
+Wi-Fi MIDI
+
+ESP-NOW (low-latency peer-to-peer control)
+
+HARDWARE ***************************************
+MCU
+
+ESP32-S3 FH4R2
+
+GPIO ASSIGNMENTS
+GPIO	Function
+GPIO 10	Momentary switch (220 kΩ pull-up to 3.3 V)
+GPIO 2–9	Capacitive touch pads (Touch 1–8)
+GPIO 17	DAC1 – Drone audio output
+GPIO 18	DAC2 – Chanter note audio output
+GPIO 48	RGB status LED + user LED
+Power
+
+Bat+ / Bat−
+Battery input and charging
+
+USB Type-C
+
+Initial programming
+
+OTA firmware updates
+
+USB MIDI
+
+Power supply and battery charging
+
+AUDIO DESIGN ***********************************
+
+Internal ESP32-S3 DACs used exclusively
+
+DAC resolution: 8-bit
+
+DAC1:
+
+Continuous drone playback
+
+Initialized once
+
+DMA looped (minimal CPU usage)
+
+DAC2:
+
+Short (~100 ms) chanter note samples
+
+Pitch-shifted per note
+
+Volume-scaled
+
+Mono signal mixed to both L/R headphone channels
+
+Passive RC low-pass filtering before 3.5 mm jack
+
+BUTTON BEHAVIOR (GPIO 1) ***********************
+Press Timing
+
+Short press (<300 ms)
+
+Wake from sleep / enter sleep
+
+Hold while awake
+
+Enables finger-pattern command mode
+
+Finger-Pattern Commands (while holding button)
+
+Calibration mode
+
+Volume up
+
+Volume down
+
+Next instrument
+
+Previous instrument
+
+Timing Rules
+
+Volume and instrument changes step every ~1500 ms
+
+No silent / mute volume level
+
+Changes stored to non-volatile memory only when complete
+
+TOUCH PAD CALIBRATION **************************
+
+Uses RGB LED on GPIO 48 for feedback.
+
+Calibration sequence:
+
+Red
+
+User touches all sensors
+
+Wait ~2.5 s
+
+White
+
+Touch calibration in progress
+
+Blue
+
+User releases all sensors
+
+Wait ~2.5 s
+
+White
+
+Untouched calibration in progress
+
+Green
+
+Calibration complete
+
+Values stored to NVS
+
+NON-VOLATILE STORAGE (NVS) *********************
+
+Stored values:
+
+Touch calibration data
+
+Volume level (1–10)
+
+Selected instrument
+
+Write policy:
+
+Write only when values change
+
+No continuous or repetitive writes
+
+Calibration written once at completion
+
+BOOT FLOW **************************************
+
+Power on / wake
+
+Check momentary button (GPIO 1)
+
+If button held:
+
+Enter OTA programming mode
+
+Else:
+
+Enter Play Chanter mode
+
+OTA PROGRAMMING MODE ***************************
+
+Initialize Wi-Fi
+
+Start OTA service
+
+Remain in OTA loop
+
+After successful update:
+
+Reboot system
+
+PLAY CHANTER MODE ******************************
+Setup
+
+Load values from NVS
+
+Select instrument and sample pointers
+
+Initialize Core 0 tasks
+
+Initialize Core 1 tasks
+
+CORE 0 – SYSTEM & CONTROL
+
+Responsibilities:
+
+Touch pad scanning
+
+Finger pattern detection
+
+Calibration routines
+
+Volume control
+
+Instrument selection
+
+Drone playback (DAC1)
+
+LED feedback
+
+Auto power-off (deep sleep)
+
+Communications (USB, BLE, Wi-Fi, ESP-NOW)
+
+Notes:
+
+Only one main routine active at a time
+
+Drone audio runs continuously once started
+
+Updates shared Note variable for Core 1
+
+CORE 1 – REAL-TIME AUDIO
+
+Responsibilities:
+
+Monitor shared Note variable
+
+Detect note changes
+
+Play chanter note samples via DAC2
+
+Maintain low-latency audio playback
+
+Notes:
+
+No UI, calibration, or communication logic
+
+Audio timing has priority
+
+DESIGN INTENT **********************************
+
+Reliable live performance
+
+Low latency audio
+
+Minimal physical controls
+
+Clear separation of responsibilities
+
+Expandable wireless features
+
+Long-term maintainability

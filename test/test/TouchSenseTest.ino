@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 
+//Designed to test threshold value of touch pins,  The value *10 is output as frequency on pin 3 can be read using multimeter 
+
 Adafruit_NeoPixel statusLED(1, 48, NEO_GRB + NEO_KHZ800);
 
 const int touchPins[] = {4, 5, 6, 7, 8, 9, 10, 11};
@@ -15,6 +17,7 @@ const uint32_t colors[] = {
 };
 
 int baseline[8];
+
 
 void setup() {
   statusLED.begin();
